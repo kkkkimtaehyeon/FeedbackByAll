@@ -53,10 +53,10 @@ export default function Navbar() {
             <>
               <Link
                 to="/upload"
-                className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm shadow-blue-500/20"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-sm font-semibold transition-all shadow-sm shadow-blue-500/20"
               >
                 <PlusCircle size={18} />
-                <span>업로드</span>
+                <span className="hidden xs:inline">업로드</span>
               </Link>
               <button
                 onClick={handleSignOut}
