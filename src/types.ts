@@ -32,5 +32,8 @@ export interface Comment {
   content: string;
   target_section?: string;
   created_at: string;
+  parent_id?: string;
+  helpful_count: number;
+  is_helpful?: boolean;
   profiles?: Profile;
 }
