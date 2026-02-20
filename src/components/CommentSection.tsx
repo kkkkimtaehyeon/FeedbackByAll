@@ -20,7 +20,6 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
   const [targetSection, setTargetSection] = useState('General Feedback');
   const [loading, setLoading] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
-
   // Edit State
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');

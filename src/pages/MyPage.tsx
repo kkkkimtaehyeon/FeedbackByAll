@@ -71,10 +71,7 @@ export default function MyPage() {
               <h2 className="font-bold text-lg">{user?.email?.split('@')[0]}</h2>
               <p className="text-xs text-slate-500">{user?.email}</p>
             </div>
-            <button className="w-full py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
-              <Settings size={16} />
-              프로필 수정
-            </button>
+
           </div>
 
           <nav className="space-y-1">

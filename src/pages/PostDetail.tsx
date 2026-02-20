@@ -258,7 +258,7 @@ export default function PostDetail() {
             <h2>피드백 요청</h2>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-800">
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic whitespace-pre-wrap">
               "{post.feedback_request}"
             </p>
           </div>

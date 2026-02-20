@@ -23,9 +23,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 transition-all duration-300"
     >
       <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
-        <div className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-700">
-          <FileText size={48} />
+        <div className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-700 pointer-events-none scale-[0.35] origin-center w-[285%] h-[285%] -translate-x-[32%] -translate-y-[32%]">
+          <iframe
+            src={`${post.file_url}#toolbar=0&navpanes=0&scrollbar=0`}
+            className="w-full h-full border-none bg-white"
+            title="Resume Thumbnail"
+          />
         </div>
+        <div className="absolute inset-0 bg-transparent" /> {/* Click overlay */}
         <div className="absolute top-3 left-3">
           <span className="px-2.5 py-1 rounded-md bg-white/90 dark:bg-slate-900/90 backdrop-blur text-[10px] font-bold tracking-wider text-slate-900 dark:text-white shadow-sm">
             {categoryMap[post.category] || post.category}
