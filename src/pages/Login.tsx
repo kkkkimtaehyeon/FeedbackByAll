@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, Loader2, Github } from 'lucide-react';
+import { Mail, Lock, Loader2, Github, User as UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +19,15 @@ export default function Login() {
     setError(null);
 
     const { error } = isSignUp
-      ? await supabase.auth.signUp({ email, password })
+      ? await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
+        }
+      })
       : await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -51,6 +60,25 @@ export default function Login() {
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800">
                 {error}
+              </div>
+            )}
+
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">이름</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <UserIcon size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-600 transition-all"
+                    placeholder="홍길동"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
               </div>
             )}
 
