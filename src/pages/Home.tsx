@@ -42,9 +42,6 @@ export default function Home() {
 
       const { data, error } = await query;
 
-      console.log("🔥 fetch error:", error);
-      console.log("🔥 fetch data:", data);
-
       if (!error && data) {
         setPosts(data.map((p: any) => ({
           ...p,
