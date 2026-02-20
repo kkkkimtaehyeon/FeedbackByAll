@@ -56,6 +56,17 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
     }
   }
 
+  const getAnonymousName = (postId: string) => {
+    const storageKey = 'anonymous_names';
+    const names = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    if (names[postId]) return names[postId];
+
+    const newName = `Anonymous Owl ${Math.floor(Math.random() * 1000)}`;
+    names[postId] = newName;
+    localStorage.setItem(storageKey, JSON.stringify(names));
+    return newName;
+  };
+
   const handleSubmit = async (e: React.FormEvent, parentId: string | null = null) => {
     if (e) e.preventDefault();
     const content = parentId ? replyContent : newComment;
@@ -69,7 +80,7 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
       .insert({
         post_id: postId,
         user_id: shouldBeAnonymous ? null : user.id,
-        anonymous_name: shouldBeAnonymous ? `Anonymous Owl ${Math.floor(Math.random() * 1000)}` : null,
+        anonymous_name: shouldBeAnonymous ? getAnonymousName(postId) : null,
         content: content,
         target_section: parentId ? null : (targetSection === 'General Feedback' ? null : targetSection),
         parent_id: parentId
@@ -150,7 +161,7 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
 
     return (
       <div key={comment.id} className={clsx("flex gap-4 group", isReply && "ml-12 mt-4")}>
-        <div className={clsx(
+        {/* <div className={clsx(
           "rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden",
           isReply ? "size-8" : "size-10"
         )}>
@@ -163,7 +174,7 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
           ) : (
             <User size={isReply ? 16 : 20} />
           )}
-        </div>
+        </div> */}
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
