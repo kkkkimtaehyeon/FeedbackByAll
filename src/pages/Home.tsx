@@ -26,7 +26,8 @@ export default function Home() {
         .select(`
         *,
         profiles (email, full_name, avatar_url),
-        comments (count)
+        comments (count),
+        views_count
       `)
         .eq('is_public', true)
         .order('created_at', { ascending: false });

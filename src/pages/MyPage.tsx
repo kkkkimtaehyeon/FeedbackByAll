@@ -28,7 +28,8 @@ export default function MyPage() {
         .select(`
           *,
           profiles (email, full_name, avatar_url),
-          comments (count)
+          comments (count),
+          views_count
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });

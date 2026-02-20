@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Post } from '../types';
-import { MessageSquare, FileText } from 'lucide-react';
+import { MessageSquare, FileText, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { getAvatarFallback } from '../lib/utils';
@@ -61,9 +61,15 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               {post.profiles?.full_name || '익명'}
             </span>
           </div>
-          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-            <MessageSquare size={14} />
-            <span className="text-xs font-semibold">{post._count?.comments || 0}</span>
+          <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1">
+              <Eye size={14} />
+              <span className="text-xs font-semibold">{post.views_count || 0}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <MessageSquare size={14} />
+              <span className="text-xs font-semibold">{post._count?.comments || 0}</span>
+            </div>
           </div>
         </div>
       </div>

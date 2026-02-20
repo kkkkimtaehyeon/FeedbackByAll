@@ -18,6 +18,7 @@ export interface Post {
   is_public: boolean;
   created_at: string;
   profiles?: Profile;
+  views_count: number;
   _count?: {
     comments: number;
   };

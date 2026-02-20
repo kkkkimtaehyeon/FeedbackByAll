@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Post, Category } from '../types';
-import { ChevronLeft, Share2, FileText, Info, Edit2, Trash2, Save, X, Globe, Lock } from 'lucide-react';
+import { ChevronLeft, Share2, FileText, Info, Edit2, Trash2, Save, X, Globe, Lock, Eye } from 'lucide-react';
 import CommentSection from '../components/CommentSection.tsx';
 import { motion } from 'motion/react';
 
@@ -32,7 +32,8 @@ export default function PostDetail() {
       .from('posts')
       .select(`
         *,
-        profiles (email, full_name, avatar_url)
+        profiles (email, full_name, avatar_url),
+        views_count
       `)
       .eq('id', id)
       .single();
@@ -49,8 +50,37 @@ export default function PostDetail() {
         is_public: data.is_public
       });
       setLoading(false);
+
+      // Unique View Tracking
+      handleViewTracking(id);
     }
   }
+
+  const handleViewTracking = async (postId: string) => {
+    try {
+      const viewedKey = 'viewed_posts';
+      const viewedPosts = JSON.parse(localStorage.getItem(viewedKey) || '[]');
+
+      if (user) {
+        // Logged-in user: RPC handles uniqueness via post_views table
+        await supabase.rpc('increment_post_view', {
+          p_post_id: postId,
+          p_user_id: user.id
+        });
+      } else {
+        // Guest user: Prevent simple refresh spam using LocalStorage
+        if (!viewedPosts.includes(postId)) {
+          await supabase.rpc('increment_post_view', {
+            p_post_id: postId
+          });
+          viewedPosts.push(postId);
+          localStorage.setItem(viewedKey, JSON.stringify(viewedPosts));
+        }
+      }
+    } catch (err) {
+      console.error('Error incrementing view count:', err);
+    }
+  };
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) return;
@@ -202,9 +232,15 @@ export default function PostDetail() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-slate-500">
-                  작성자: <span className="font-bold text-slate-900 dark:text-white">{post.profiles?.full_name || post.profiles?.email}</span>
-                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-sm text-slate-500">
+                    작성자: <span className="font-bold text-slate-900 dark:text-white">{post.profiles?.full_name || post.profiles?.email}</span>
+                  </p>
+                  <div className="flex items-center gap-1 text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-3 ml-1">
+                    <Eye size={14} />
+                    <span className="text-sm font-medium">{post.views_count || 0}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
