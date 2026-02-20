@@ -306,16 +306,6 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
         </h3>
       </div>
 
-      <div className="space-y-6">
-        {parentComments.map(comment => renderComment(comment))}
-
-        {comments.length === 0 && (
-          <div className="text-center py-12 text-slate-500">
-            아직 피드백이 없습니다. 첫 번째로 의견을 공유해 보세요!
-          </div>
-        )}
-      </div>
-
       {/* Comment Input */}
       <form onSubmit={(e) => handleSubmit(e)} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
         <div className="space-y-4">
@@ -368,6 +358,16 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
           </div>
         </div>
       </form>
+
+      <div className="space-y-6">
+        {parentComments.map(comment => renderComment(comment))}
+
+        {comments.length === 0 && (
+          <div className="text-center py-12 text-slate-500">
+            아직 피드백이 없습니다. 첫 번째로 의견을 공유해 보세요!
+          </div>
+        )}
+      </div>
     </div>
   );
 }
