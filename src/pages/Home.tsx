@@ -46,7 +46,10 @@ export default function Home() {
       console.log("🔥 fetch data:", data);
 
       if (!error && data) {
-        setPosts(data as any);
+        setPosts(data.map((p: any) => ({
+          ...p,
+          _count: { comments: p.comments?.[0]?.count || 0 }
+        })));
       }
 
       setLoading(false);
