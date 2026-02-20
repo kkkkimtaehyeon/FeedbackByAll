@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, LogOut, User as UserIcon, PlusCircle, MessageSquare } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon, PlusCircle, MessageSquare, Sun, Moon } from 'lucide-react';
 import { cn } from '../lib/utils.ts';
+import { useTheme } from '../contexts/ThemeContext.tsx';
 
 export default function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const handleSignOut = async () => {
     try {
@@ -13,11 +15,11 @@ export default function Navbar() {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Force navigation and clear local state even if Supabase call fails
+      localStorage.removeItem('supabase.auth.token'); // More targeted clear if needed
       localStorage.clear();
       sessionStorage.clear();
       navigate('/login');
-      window.location.reload(); // Hard reload to clear all states
+      window.location.reload();
     }
   };
 
@@ -28,19 +30,25 @@ export default function Navbar() {
           <div className="bg-blue-600 text-white p-1.5 rounded-lg group-hover:bg-blue-700 transition-colors">
             <MessageSquare size={20} />
           </div>
-          <span className="text-xl font-bold tracking-tight">FeedbackByAll</span>
+          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">FeedbackByAll</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
-          <Link to="/" className="text-sm font-medium hover:text-blue-600 transition-colors">홈</Link>
-          {/* <Link to="/?category=Resume" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors">이력서</Link> */}
-          {/* <Link to="/?category=Portfolio" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors">포트폴리오</Link> */}
+        <nav className="hidden md:flex items-center gap-8 text-slate-600 dark:text-slate-400">
+          <Link to="/" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">홈</Link>
           {user && (
-            <Link to="/mypage" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors">마이페이지</Link>
+            <Link to="/mypage" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">마이페이지</Link>
           )}
         </nav>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            title={theme === 'light' ? '다크 모드로 전환' : '라이트 모드로 전환'}
+          >
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+
           {user ? (
             <>
               <Link
