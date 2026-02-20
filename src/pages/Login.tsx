@@ -18,6 +18,20 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
+    // Initial Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('유효한 이메일 주소를 입력해주세요.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('비밀번호는 최소 6자 이상이어야 합니다.');
+      setLoading(false);
+      return;
+    }
+
     const { error } = isSignUp
       ? await supabase.auth.signUp({
         email,
