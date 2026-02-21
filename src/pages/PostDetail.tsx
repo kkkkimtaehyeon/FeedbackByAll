@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Post, Category } from '../types';
-import { ChevronLeft, Share2, FileText, Info, Edit2, Trash2, Save, X, Globe, Lock, Eye } from 'lucide-react';
+import { ChevronLeft, Share2, FileText, Info, Edit2, Trash2, Save, X, Globe, Lock, Eye, ShieldCheck } from 'lucide-react';
 import CommentSection from '../components/CommentSection.tsx';
 import { motion } from 'motion/react';
 
@@ -21,10 +21,90 @@ export default function PostDetail() {
     is_public: true
   });
   const [saving, setSaving] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchPost();
   }, [id]);
+
+  // Decrypt and render PDF once post is loaded
+  useEffect(() => {
+    if (!post) return;
+    decryptAndLoadPdf(post);
+    return () => {
+      // Revoke previous Blob URL to avoid memory leaks
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+    };
+  }, [post?.id]);
+
+  const decryptAndLoadPdf = async (loadedPost: Post) => {
+    setPdfLoading(true);
+    try {
+      // Request DEK from Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unwrap-dek`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ post_id: loadedPost.id }),
+        }
+      );
+
+      if (!res.ok) {
+        // Key not found — legacy post, show raw URL directly
+        console.warn('No encryption key found for this post, rendering directly.');
+        setPdfBlobUrl(null);
+        setPdfLoading(false);
+        return;
+      }
+
+      const { dek_base64 } = await res.json();
+
+      // Decode DEK from Base64
+      const dekBytes = Uint8Array.from(atob(dek_base64), (c) => c.charCodeAt(0));
+      const dek = await crypto.subtle.importKey(
+        'raw',
+        dekBytes,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+
+      // Download encrypted file
+      const fileRes = await fetch(loadedPost.file_url);
+      const encryptedBuffer = await fileRes.arrayBuffer();
+
+      // Split: first 12 bytes = IV, rest = ciphertext
+      const iv = encryptedBuffer.slice(0, 12);
+      const ciphertext = encryptedBuffer.slice(12);
+
+      // Decrypt in-memory
+      const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        dek,
+        ciphertext
+      );
+
+      // Create a Blob URL for the PDF
+      const blob = new Blob([decryptedBuffer], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      setPdfBlobUrl(url);
+    } catch (err) {
+      console.error('PDF decryption failed:', err);
+      setPdfBlobUrl(null);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   async function fetchPost() {
     if (!id) return;
@@ -191,10 +271,10 @@ export default function PostDetail() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">피드백 요청 사항</label>
                 <textarea
-                  rows={4}
+                  rows={20}
                   value={editForm.feedback_request}
                   onChange={e => setEditForm({ ...editForm, feedback_request: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-blue-500 outline-none resize-y min-h-[400px]"
                 />
               </div>
 
@@ -268,14 +348,21 @@ export default function PostDetail() {
           </div>
         )}
 
-        {/* Mock PDF Viewer */}
+        {/* PDF Viewer */}
         <div className="aspect-[1/1.414] bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-700 relative group">
           <div className="absolute inset-0 flex items-center justify-center">
-            <iframe
-              src={`${post.file_url}#toolbar=0`}
-              className="w-full h-full border-none"
-              title="Resume Viewer"
-            />
+            {pdfLoading ? (
+              <div className="flex flex-col items-center gap-3 text-slate-400">
+                <ShieldCheck size={32} className="animate-pulse text-blue-400" />
+                <span className="text-sm">PDF 복호화 중...</span>
+              </div>
+            ) : (
+              <iframe
+                src={`${pdfBlobUrl ?? post.file_url}#toolbar=0`}
+                className="w-full h-full border-none"
+                title="Resume Viewer"
+              />
+            )}
           </div>
           {/* Overlay for interaction if needed */}
           <div className="absolute bottom-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -299,9 +386,16 @@ export default function PostDetail() {
             </p>
           </div>
         </div>
-
-        <CommentSection postId={post.id} feedbackRequest={post.feedback_request} />
+        {/* <CommentSection postId={post.id} feedbackRequest={post.feedback_request} /> */}
+        {/* TODO: 여기에 좋아요가 제일 많거나 글자수가 많은 피드백을 2개 정도 보여주기 */}
       </aside>
+
+      {/* Bottom Section: Full Width Comments */}
+      <div className="lg:col-span-12 mt-12">
+        <div className="max-w-4xl mx-auto">
+          <CommentSection postId={post.id} feedbackRequest={post.feedback_request} postOwnerId={post.user_id} />
+        </div>
+      </div>
     </div>
   );
 }

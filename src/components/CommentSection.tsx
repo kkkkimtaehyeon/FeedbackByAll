@@ -11,9 +11,10 @@ import clsx from 'clsx';
 interface CommentSectionProps {
   postId: string;
   feedbackRequest: string;
+  postOwnerId?: string;
 }
 
-export default function CommentSection({ postId, feedbackRequest }: CommentSectionProps) {
+export default function CommentSection({ postId, feedbackRequest, postOwnerId }: CommentSectionProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -102,12 +103,15 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
     setLoading(false);
   };
 
-  const handleDelete = async (commentId: string) => {
-    if (!window.confirm('이 댓글을 삭제하시겠습니까?')) return;
+  const handleDelete = async (commentId: string, isPostOwnerAction = false) => {
+    const msg = isPostOwnerAction
+      ? '게시물 관리자로서 이 피드백을 삭제하시겠습니까?'
+      : '이 댓글을 삭제하시겠습니까?';
+    if (!window.confirm(msg)) return;
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
     if (error) {
       console.error('Error deleting comment:', error);
-      alert('Failed to delete comment');
+      alert('댓글 삭제에 실패했습니다.');
     } else {
       fetchComments();
     }
@@ -156,6 +160,7 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
 
   const renderComment = (comment: Comment, isReply = false) => {
     const isOwner = user && user.id === comment.user_id;
+    const isPostOwner = user && user.id === postOwnerId && !isOwner;
     const isEditing = editingCommentId === comment.id;
     const isReplying = replyingToId === comment.id;
 
@@ -196,12 +201,18 @@ export default function CommentSection({ postId, feedbackRequest }: CommentSecti
               <span className="text-xs text-slate-500">
                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: ko })}
               </span>
-              {isOwner && !isEditing && (
+              {(isOwner || isPostOwner) && !isEditing && (
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => startEditing(comment)} className="p-1 text-slate-400 hover:text-blue-600 transition-colors">
-                    <Edit2 size={12} />
-                  </button>
-                  <button onClick={() => handleDelete(comment.id)} className="p-1 text-slate-400 hover:text-red-600 transition-colors">
+                  {isOwner && (
+                    <button onClick={() => startEditing(comment)} className="p-1 text-slate-400 hover:text-blue-600 transition-colors">
+                      <Edit2 size={12} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(comment.id, isPostOwner)}
+                    className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                    title={isPostOwner ? '게시물 관리자로 삭제' : '삭제'}
+                  >
                     <Trash2 size={12} />
                   </button>
                 </div>

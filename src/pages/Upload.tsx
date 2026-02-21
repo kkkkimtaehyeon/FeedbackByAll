@@ -33,6 +33,31 @@ export default function Upload() {
     }
   };
 
+  // ── Encryption helpers ──────────────────────────────────────────────────────
+
+  /** Generate a random 256-bit AES-GCM key (DEK) */
+  const generateDek = async (): Promise<CryptoKey> => {
+    return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  };
+
+  /** Encrypt file bytes with the DEK. Returns [IV (12 bytes) || ciphertext] as Uint8Array */
+  const encryptFile = async (fileBytes: ArrayBuffer, dek: CryptoKey): Promise<Uint8Array> => {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, dek, fileBytes);
+    const result = new Uint8Array(iv.byteLength + ciphertext.byteLength);
+    result.set(iv, 0);
+    result.set(new Uint8Array(ciphertext), iv.byteLength);
+    return result;
+  };
+
+  /** Export CryptoKey to Base64 string */
+  const exportDekToBase64 = async (dek: CryptoKey): Promise<string> => {
+    const raw = await crypto.subtle.exportKey('raw', dek);
+    return btoa(String.fromCharCode(...new Uint8Array(raw)));
+  };
+
+  // ── Submit ───────────────────────────────────────────────────────────────────
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !user) return;
@@ -41,26 +66,32 @@ export default function Upload() {
     setError(null);
 
     try {
-      // 1. Upload file to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      // STEP 1: Generate DEK and encrypt the PDF in the browser
+      const dek = await generateDek();
+      const fileBytes = await file.arrayBuffer();
+      const encryptedBytes = await encryptFile(fileBytes, dek);
+
+      // STEP 2: Upload encrypted blob to Supabase Storage
+      const fileName = `${crypto.randomUUID()}.pdf`;
       const filePath = `${user.id}/${fileName}`;
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(filePath, file);
+        .upload(filePath, new Blob([new Uint8Array(encryptedBytes).buffer as ArrayBuffer], { type: 'application/pdf' }));
 
       if (uploadError) throw uploadError;
 
-      // 2. Get Public URL
+      // STEP 3: Get public URL of the encrypted file
       const { data: { publicUrl } } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
 
-      // 3. Create Post in Database
+      // STEP 4: Pre-generate post ID client-side, then insert (avoids .select() RLS issue)
+      const postId = crypto.randomUUID();
       const { error: dbError } = await supabase
         .from('posts')
         .insert({
+          id: postId,
           user_id: user.id,
           title,
           category,
@@ -70,6 +101,26 @@ export default function Upload() {
         });
 
       if (dbError) throw dbError;
+
+      // STEP 5: Send DEK to Edge Function to be wrapped and stored
+      const { data: { session } } = await supabase.auth.getSession();
+      const dekBase64 = await exportDekToBase64(dek);
+      const wrapRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wrap-dek`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ dek_base64: dekBase64, post_id: postId }),
+        }
+      );
+
+      if (!wrapRes.ok) {
+        const errBody = await wrapRes.json();
+        throw new Error(`키 저장 오류: ${errBody.error}`);
+      }
 
       navigate('/');
     } catch (err: any) {
