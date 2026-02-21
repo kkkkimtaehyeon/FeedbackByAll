@@ -165,7 +165,7 @@ export default function CommentSection({ postId, feedbackRequest, postOwnerId }:
     const isReplying = replyingToId === comment.id;
 
     return (
-      <div key={comment.id} className={clsx("flex gap-4 group", isReply && "ml-12 mt-4")}>
+      <div key={comment.id} id={`comment-${comment.id}`} className={clsx("flex gap-4 group", isReply && "ml-12 mt-4")}>
         {/* <div className={clsx(
           "rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden",
           isReply ? "size-8" : "size-10"

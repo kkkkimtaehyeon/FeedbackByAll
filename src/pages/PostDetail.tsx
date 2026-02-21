@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Post, Category } from '../types';
-import { ChevronLeft, Share2, FileText, Info, Edit2, Trash2, Save, X, Globe, Lock, Eye, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Share2, FileText, Info, Edit2, Trash2, Save, X, Globe, Lock, Eye, ShieldCheck, ThumbsUp, Medal } from 'lucide-react';
 import CommentSection from '../components/CommentSection.tsx';
 import { motion } from 'motion/react';
 
@@ -21,12 +21,14 @@ export default function PostDetail() {
     is_public: true
   });
   const [saving, setSaving] = useState(false);
+  const [topComments, setTopComments] = useState<any[]>([]);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(true);
   const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchPost();
+    fetchTopComments();
   }, [id]);
 
   // Decrypt and render PDF once post is loaded
@@ -174,6 +176,38 @@ export default function PostDetail() {
       setSaving(false);
     } else {
       navigate('/');
+    }
+  };
+
+  const fetchTopComments = async () => {
+    if (!id) return;
+
+    // Fetch all top-level comments for this post
+    const { data, error } = await supabase
+      .from('comments')
+      .select(`
+        *,
+        profiles (email, full_name, avatar_url)
+      `)
+      .eq('post_id', id)
+      .is('parent_id', null);
+
+    if (error) {
+      console.error('Error fetching top comments:', error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      // Sort primarily by helpful_count (desc), secondarily by content length (desc)
+      const sorted = data.sort((a, b) => {
+        if (b.helpful_count !== a.helpful_count) {
+          return b.helpful_count - a.helpful_count;
+        }
+        return b.content.length - a.content.length;
+      });
+
+      // Take top 2
+      setTopComments(sorted.slice(0, 5));
     }
   };
 
@@ -386,8 +420,50 @@ export default function PostDetail() {
             </p>
           </div>
         </div>
-        {/* <CommentSection postId={post.id} feedbackRequest={post.feedback_request} /> */}
-        {/* TODO: 여기에 좋아요가 제일 많거나 글자수가 많은 피드백을 2개 정도 보여주기 */}
+
+        {/* Top Feedback Highlights */}
+        {topComments.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 text-amber-500 font-bold mb-4">
+              <Medal size={20} />
+              <h2>베스트 피드백</h2>
+            </div>
+
+            <div className="space-y-4">
+              {topComments.map((comment, index) => (
+                <div
+                  key={comment.id}
+                  onClick={() => {
+                    const el = document.getElementById(`comment-${comment.id}`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      el.classList.add('ring-2', 'ring-blue-500', 'transition-all', 'duration-1000');
+                      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 2000);
+                    }
+                  }}
+                  className="relative bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center border-4 border-white dark:border-slate-900 shadow-sm z-10">
+                    {index + 1}
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {comment.user_id ? (comment.profiles?.full_name || '사용자') : comment.anonymous_name}
+                    </span>
+                    {comment.helpful_count > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
+                        <ThumbsUp size={10} /> {comment.helpful_count}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-4">
+                    {comment.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Bottom Section: Full Width Comments */}
